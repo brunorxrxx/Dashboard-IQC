@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>IQC Inspection Control – Foxconn</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="hdr-left">
+    <button id="btnSidebar" class="hdr-btn" title="Filtros">☰</button>
+    <span class="hdr-title">IQC Inspection Control</span>
+    <span class="hdr-sep"></span>
+    <div class="tab-btns" id="tabBtns" style="display:none;">
+      <button class="tab-btn active" onclick="switchTab('dash')">
+        <svg style="width:12px;height:12px;vertical-align:-1px;margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="tab-btn" onclick="switchTab('tend')">
+        <svg style="width:12px;height:12px;vertical-align:-1px;margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        Tendência
+      </button>
+      <button class="tab-btn" onclick="switchTab('insp')">
+        <svg style="width:12px;height:12px;vertical-align:-1px;margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Inspetores
+      </button>
+      <button class="tab-btn" onclick="switchTab('forn')">
+        <svg style="width:12px;height:12px;vertical-align:-1px;margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Fornecedores
+      </button>
+      <button class="tab-btn" onclick="switchTab('su')">
+        <svg style="width:12px;height:12px;vertical-align:-1px;margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+        Matriz SU
+      </button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button id="btnFS" class="hdr-btn" title="Tela Cheia" onclick="toggleFS()">⛶</button>
+    <div class="foxconn-badge"><b>H</b><span>FOXCONN</span></div>
+  </div>
+</header>
+
+<div id="app">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-inner">
+      <div>
+        <div class="sb-title" style="margin-bottom:8px;">🔽 Filtros</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="fi"><label>Ano</label>    <select id="fAno"    onchange="applyFilters()"></select></div>
+          <div class="fi"><label>Mês</label>    <select id="fMes"    onchange="applyFilters()"></select></div>
+          <div class="fi"><label>Semana</label> <select id="fSemana" onchange="applyFilters()"></select></div>
+          <div class="fi"><label>Turno</label>  <select id="fTurno"  onchange="applyFilters()"></select></div>
+          <div class="fi"><label>Cliente</label><select id="fClient" onchange="applyFilters()"></select></div>
+          <div class="fi"><label>Status</label> <select id="fStatus" onchange="applyFilters()"></select></div>
+        </div>
+        <button class="btn-clear" onclick="clearFilters()" style="margin-top:10px;">✕ Limpar Filtros</button>
+      </div>
+      <div style="margin-top:auto;padding-top:12px;">
+        <label for="fileInput" class="btn-newfile" onclick="resetToUpload()">📂 Novo Arquivo</label>
+      </div>
+    </div>
+  </div>
+
+  <div id="content">
+    <!-- UPLOAD -->
+    <div id="uploadZone">
+      <div class="upload-card" id="dropArea">
+        <span class="up-icon">📊</span>
+        <h2>Carregar Dados IQC</h2>
+        <p>Arraste o arquivo Excel aqui<br/>ou clique para selecionar</p>
+        <label for="fileInput" class="btn-up">📂 Selecionar Arquivo Excel</label>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashPage">
+      <div class="status-bar">
+        <div><span class="dot-g"></span><span id="statusText">—</span></div>
+        <span id="lastFile" style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      </div>
+
+      <div class="kpi-row" id="kpiRow">
+        <div class="kpi-card c-blue">  <div class="kpi-icon">🔍</div><div class="kpi-val"  id="kpiTotal">0</div>    <div class="kpi-lbl">Total SUs Inspecionadas</div></div>
+        <div class="kpi-card c-green"> <div class="kpi-icon">✅</div><div class="kpi-val g" id="kpiAprov">0</div>    <div class="kpi-lbl">SUs Aprovadas</div></div>
+        <div class="kpi-card c-red">   <div class="kpi-icon">❌</div><div class="kpi-val r" id="kpiRej">0</div>     <div class="kpi-lbl">SUs Rejeitadas</div></div>
+        <div class="kpi-card c-green"> <div class="kpi-icon">📈</div><div class="kpi-val g" id="kpiTaxaA">0,0%</div><div class="kpi-lbl">Taxa de Aprovação</div></div>
+        <div class="kpi-card c-yellow"><div class="kpi-icon">⚠️</div><div class="kpi-val y" id="kpiPPM">0</div>     <div class="kpi-lbl">Taxa Defeitos PPM</div></div>
+        <div class="kpi-card c-purple"><div class="kpi-icon">🏆</div><div class="kpi-val p" id="kpiDias">0</div>    <div class="kpi-lbl">Dias Sem Rejeição</div></div>
+        <div class="kpi-card c-cyan">  <div class="kpi-icon">🔬</div><div class="kpi-val c" id="kpiSevera">0</div>  <div class="kpi-lbl">Inspeção Severa</div></div>
+      </div>
+
+      <div class="client-grid" id="clientGrid"></div>
+
+      <div class="mid-row">
+        <div class="panel">
+          <div class="ptitle">Total Qty Inspected per Shift</div>
+          <div class="pie-wrap"><canvas id="pieChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">Performance por Inspetor</div>
+          <div class="itbl-wrap">
+            <table class="itbl">
+              <thead><tr>
+                <th><div class="th-inner"><svg class="th-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Inspetor</div></th>
+                <th class="r"><div class="th-inner right"><svg class="th-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>Total SUs</div></th>
+                <th class="r"><div class="th-inner right"><svg class="th-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Vol. Insp.</div></th>
+                <th class="r"><div class="th-inner right"><svg class="th-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Amostra</div></th>
+                <th class="r"><div class="th-inner right"><svg class="th-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Avg/Dia</div></th>
+                <th class="r"><div class="th-inner right"><svg class="th-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>% do Total</div></th>
+              </tr></thead>
+              <tbody id="inspBody"></tbody>
+              <tfoot id="inspFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="bot-row">
+        <div class="panel"><div class="ptitle">Total Quantity Inspected</div>
+          <div class="ch-wrap"><canvas id="barInsp"></canvas></div></div>
+        <div class="panel"><div class="ptitle">Total Quantity Received</div>
+          <div class="ch-wrap"><canvas id="barReceb"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- TENDÊNCIA PAGE -->
+    <div id="tendPage">
+      <div class="panel">
+        <div class="ptitle" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span style="display:flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            Tendência Semanal — SUs &amp; Volume Inspecionado
+          </span>
+          <div style="display:flex;gap:18px;align-items:center;">
+            <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'Share Tech Mono',monospace;opacity:.75;">
+              <span style="display:inline-block;width:22px;height:2px;background:#1a7fe8;border-radius:1px;vertical-align:middle;"></span>SUs (eixo esq.)
+            </span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'Share Tech Mono',monospace;opacity:.75;">
+              <span style="display:inline-block;width:22px;height:0px;border-top:2px dashed #22c55e;vertical-align:middle;"></span>Volume (eixo dir.)
+            </span>
+          </div>
+        </div>
+        <div class="trend-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="ptitle">Evolução Mensal por Inspetor</div>
+        <div class="ch-wrap" style="height:300px;"><canvas id="inspMonthChart"></canvas></div>
+      </div>
+
+      <div class="bot-row">
+        <div class="panel">
+          <div class="ptitle">Distribuição Sampling Switching</div>
+          <div class="pie-wrap"><canvas id="samplingChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">SUs por Mês</div>
+          <div class="ch-wrap"><canvas id="monthlyBar"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSPECTOR PROFILE -->
+    <div id="inspPage">
+      <div class="insp-sel-bar">
+        <label>
+          <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          Selecionar Inspetor:
+        </label>
+        <select id="inspSelect" onchange="renderInspProfile()"></select>
+      </div>
+      <div class="ikpi-row" id="inspKpiRow"></div>
+      <div class="insp-mid">
+        <div class="panel"><div class="ptitle">Informações</div><div id="inspInfo"></div></div>
+        <div class="panel"><div class="ptitle">Inspeções por Cliente</div><div id="inspClients"></div></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">Evolução Mensal</div>
+        <div class="ch-wrap"><canvas id="inspEvolChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">SUs Inspecionadas</div>
+        <div style="overflow-x:auto;max-height:360px;overflow-y:auto;">
+          <table class="rtbl">
+            <colgroup>
+              <col style="width:90px;"/><col style="width:70px;"/><col style="width:170px;"/>
+              <col style="width:50px;"/><col style="width:75px;"/><col style="width:88px;"/>
+              <col style="width:110px;"/><col style="width:auto;"/>
+            </colgroup>
+            <thead><tr>
+              <th>Data</th><th>Cliente</th><th>Modelo</th>
+              <th class="r">Turno</th><th class="r">Qtd. Insp.</th>
+              <th>Status</th><th>SU Number</th><th>Falha</th>
+            </tr></thead>
+            <tbody id="inspRecent"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORNECEDORES PAGE -->
+    <div id="fornPage">
+      <div class="forn-kpi-row" id="fornKpiRow"></div>
+      <div class="mid-row" style="grid-template-columns:3fr 2fr;align-items:start;">
+        <div class="panel">
+          <div class="ptitle">Ranking de Fornecedores — Volume Inspecionado</div>
+          <div class="ch-wrap" style="height:460px;"><canvas id="fornBarChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">Tabela de Fornecedores</div>
+          <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
+            <table class="itbl">
+              <thead><tr>
+                <th>Fornecedor</th>
+                <th class="r">SUs</th>
+                <th class="r">Vol. Insp.</th>
+                <th class="r">Vol. Receb.</th>
+                <th class="r">% do Total</th>
+              </tr></thead>
+              <tbody id="fornBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SU MATRIX PAGE -->
+    <div id="suPage">
+      <div class="su-toolbar">
+        <div class="su-search-wrap">
+          <svg width="16" height="16" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5;pointer-events:none" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="suSearch" type="text" placeholder="Pesquisar SU Number, Modelo, Cliente, Inspetor, Lote…" oninput="renderSuMatrix()"/>
+        </div>
+        <span class="su-count" id="suCount">0 registros</span>
+      </div>
+      <div class="su-panel">
+        <div class="su-scroll">
+          <table class="su-tbl" id="suTbl">
+            <thead><tr id="suHead"></tr></thead>
+            <tbody id="suBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<input type="file" id="fileInput" accept=".xlsx,.xls"/>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay">
+  <div class="spinner-wrap">
+    <div class="spinner-ring"></div>
+    <div class="spinner-ring2"></div>
+  </div>
+  <div class="loading-txt">Processando arquivo…</div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  <div class="loading-sub">Aguarde, lendo dados do Excel</div>
+</div>
+
+<!-- PRESENTATION BAR -->
+<div id="presBar">
+  <div class="pres-label" id="presLabel">● AO VIVO</div>
+  <div class="pres-track"><div class="pres-fill" id="presFill" style="width:0%"></div></div>
+  <div class="pres-step" id="presStep">Dashboard · 30s</div>
+  <button class="pres-stop" onclick="stopPresentation()">■ Parar</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
